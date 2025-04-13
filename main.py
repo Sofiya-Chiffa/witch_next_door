@@ -5,7 +5,8 @@ import sqlite3
 import random
 from itertools import product
 
-DIS_SIZE = (1000, 600)
+t_s = 2
+DIS_SIZE = (1920 / t_s, 1080 / t_s)
 FPS = 50
 pygame.init()
 screen = pygame.display.set_mode(DIS_SIZE)
@@ -29,51 +30,6 @@ def load_image(name, colorkey=None):
         image = image.convert_alpha()
     return image
 
-
-
-class objects():
-
-    def __init__(self, name):
-        # example
-        name = "knife"
-        place = "kitchen"
-        pos = (0, 0)
-        invent = False
-
-    def take(self):
-        print()
-        # todo
-
-    def use(self):
-        print()
-        # todo
-
-    def combine(self):
-        print()
-        # todo
-
-
-class interactions():
-
-    def __init__(self, name):
-        # example
-        name = "box"
-        place = "under bed"
-        pos = (0, 0)
-        done = False
-        need_object = "knife"
-
-
-class room():
-
-    def __init__(self, name):
-        # example
-        name = ""
-
-
-# Цикл игры
-def game():
-    return
 
 def give_text(place, num):
     return ["Хоши", "недавно мне пришо поручение от гильдии. говрят в одной квартире одинокий мужчина умер от сердечного приступа, но соседи продолжают слышать его шаги."]
@@ -109,7 +65,6 @@ def dialogue(text):
 # Заставка игры и её начало
 def intro(num):
     intro_text = give_text("intro", num)
-    print(num)
     if 0 <= num <= 2:
         im = 'двор.png'
     elif 3 <= num <= 6:
@@ -136,23 +91,80 @@ def menu():
     else:
         return False
 
+class Objects(pygame.sprite.Sprite):
+
+    def __init__(self, name, active):
+        super().__init__(all_obj)
+        self.active = active
+        if self.active == 0:
+            self.image = pygame.transform.scale(load_image("шкаф" + ".png"), (495/t_s, 311/t_s))
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = DIS_SIZE[0] - 490/t_s, DIS_SIZE[1] - (311/t_s + 40)
+        elif self.active == 1:
+            self.image = pygame.transform.scale(load_image("шкафоткрыт" + ".png"), (661 / t_s, 375 / t_s))
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = DIS_SIZE[0] - 650/t_s, DIS_SIZE[1] - (375/t_s + 15)
+
+    def get_click(self, mouse_pos):
+        self.active = (self.active + 1) % 2
+
+
+    def update(self, dt):
+        if self.active == 0:
+            self.image = pygame.transform.scale(load_image("шкаф" + ".png"), (495 / t_s, 311 / t_s))
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = DIS_SIZE[0] - 490 / t_s, DIS_SIZE[1] - (311 / t_s + 40)
+        elif self.active == 1:
+            self.image = pygame.transform.scale(load_image("шкафоткрыт" + ".png"), (661 / t_s, 375 / t_s))
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = DIS_SIZE[0] - 650 / t_s, DIS_SIZE[1] - (375 / t_s + 15)
+
+    def delete(self):
+        self.kill()
+
+
+def apartment(state, time):
+    if state == 0:
+        im = 'гостиная.png'
+    if state == 0 and time == 0:
+        Objects("шкаф", 1)
+    fon = pygame.transform.scale(load_image(im), (DIS_SIZE[0], DIS_SIZE[1]))
+    screen.blit(fon, (5, 0))
+
+
 
 run_game = True
-intro_flag = -1
+state_room = 0
+flag = 0
 while run_game:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run_game = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if -1 <= intro_flag <= 10:
-                intro_flag += 1
-            else:
-                intro_flag = -2
-    if intro_flag >= 0:
-        intro(intro_flag)
+            flag += 1
+    if 0 <= flag <= 10:
+        intro(flag)
     else:
-        screen.fill((192, 192, 192))
+        break
+    pygame.display.flip()
+
+run_game = True
+all_obj = pygame.sprite.Group()
+t_room = 0
+while run_game:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run_game = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            for obj in all_obj:
+                if obj.rect.collidepoint(event.pos):
+                    obj.get_click(event.pos)
+            flag += 1
+    dt = clock.tick()
+    apartment(state_room, t_room)
+    all_obj.draw(screen)
+    all_obj.update(dt)
     pygame.display.flip()
     clock.tick(FPS)
-
+    t_room += 1
 pygame.quit()
