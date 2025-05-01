@@ -218,8 +218,10 @@ class Objects(pygame.sprite.Sprite):
 
 
 
-    def get_click(self, mouse_pos):
+    def get_click(self, mouse_pos, inv):
         print(self.name)
+        if self.name == "шкаф" and inv.get_active_obj() == "ключ1":
+            conn.cursor().execute("""UPDATE obj SET key = ? WHERE name = ?""", (1, self.name,))
         if (conn.cursor().execute("""SELECT key FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0] == 1):
             self.active = (self.active + 1) % 2
 
@@ -331,7 +333,7 @@ while run_game:
             if c:
                 for obj in all_obj:
                     if obj.rect.collidepoint(event.pos):
-                        obj.get_click(event.pos)
+                        obj.get_click(event.pos, inventory)
             flag += 1
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
