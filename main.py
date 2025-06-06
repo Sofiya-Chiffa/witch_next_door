@@ -31,11 +31,6 @@ def load_image(name, colorkey=None):
         image = image.convert_alpha()
     return image
 
-
-def give_text(place, num):
-    return ["Хоши", "недавно мне пришло поручение от гильдии. говрят в одной квартире одинокий мужчина умер от сердечного приступа, но соседи продолжают слышать его шаги."]
-
-
 # Рисование текста для заставки игры
 def draw_text(text, color, place, size):
     lines = [""]
@@ -55,6 +50,9 @@ def draw_text(text, color, place, size):
         text_rect.x = place[0]
         screen.blit(string_rendered, text_rect)
 
+
+def give_text(place, num):
+    return ["Хоши", "недавно мне пришло поручение от гильдии. говрят в одной квартире одинокий мужчина умер от сердечного приступа, но соседи продолжают слышать его шаги."]
 
 
 def dialogue(text):
@@ -92,6 +90,7 @@ def menu():
     else:
         return False
 
+# класс инвентаря
 class Inventory:
     def __init__(self):
         self.width = 100
@@ -103,26 +102,32 @@ class Inventory:
         self.objs = []
         self.active_obj = ""
 
+    # отрисовка
     def render(self, surface):
         for i in range(6):
             pygame.draw.rect(surface, 'grey', (self.left, self.top + self.cs*i, 100, self.cs))
             pygame.draw.rect(surface, 'white', (self.left, self.top + self.cs*i, 100, self.cs), 6)
             if len(self.objs) > i:
+                if self.objs[i] == "ключ1":
+                    change = 1.5
+                elif self.objs[i] == "ключ2":
+                    change = 1.3
+                else:
+                    change = 4.5
                 image = pygame.transform.scale(load_image(self.objs[i] + ".png"), (
-                (conn.cursor().execute("""SELECT x1 FROM obj WHERE name = ?""", (self.objs[i],)).fetchall()[0][0]) / t_s / 1.5,
-                (conn.cursor().execute("""SELECT y1 FROM obj WHERE name = ?""", (self.objs[i],)).fetchall()[0][0]) / t_s / 1.5))
-                screen.blit(image, (self.left + 15, self.top + self.cs*i))
+                (conn.cursor().execute("""SELECT x1 FROM obj WHERE name = ?""", (self.objs[i],)).fetchall()[0][0]) / t_s / change,
+                (conn.cursor().execute("""SELECT y1 FROM obj WHERE name = ?""", (self.objs[i],)).fetchall()[0][0]) / t_s / change))
+                screen.blit(image, (self.left + 10, self.top + self.cs*i))
                 if self.board[i] == 1:
                     draw_surface = pygame.Surface(DIS_SIZE, pygame.SRCALPHA)
                     pygame.draw.rect(draw_surface, (255, 255, 100, 100), (self.left, self.top + self.cs * i, 100, self.cs))
                     screen.blit(draw_surface, (0, 0))
 
+    # доюавление объекта
     def add_obj(self, name):
         self.objs.append(name)
 
-    def del_obj(self, name):
-        pass
-
+    # нажатие на ячейку
     def get_click(self, mouse_pos):
         if self.get_cell(mouse_pos) is not None:
             if self.board[self.get_cell(mouse_pos)] == 0:
@@ -133,6 +138,7 @@ class Inventory:
                 self.active_obj = ""
             self.board[self.get_cell(mouse_pos)] = (self.board[self.get_cell(mouse_pos)] + 1) % 2
 
+    # возврат номера нажатой ячейки
     def get_cell(self, mouse_pos):
         if self.left <= mouse_pos[0] <= self.left + self.width and \
                 self.top <= mouse_pos[1] <= self.top + self.height:
@@ -141,6 +147,7 @@ class Inventory:
         else:
             return None
 
+    # возварт активного объекта
     def get_active_obj(self):
         return self.active_obj
 
@@ -148,18 +155,18 @@ class Inventory:
 codes = []
 class Code():
 
-    def __init__(self, x, y):
-        self.x, self.y = x, y
+    def __init__(self, x, y, s):
+        self.x, self.y, self.s = x, y, s
         self.num = 0
         print(0)
-        draw_text(str(self.num), 'black', [self.x, self.y], 50)
+        draw_text(str(self.num), 'black', [self.x, self.y], self.s)
 
     def update(self):
-        draw_text(str(self.num), 'black', [self.x, self.y], 50)
+        draw_text(str(self.num), 'black', [self.x, self.y],self.s)
 
     def get_click(self, mouse_pos):
-        if self.x - 20 <= mouse_pos[0] <= self.x + 70 and \
-                self.y - 20 <= mouse_pos[1] <= self.y + 70:
+        if self.x - 20 <= mouse_pos[0] <= self.x + self.s + 20 and \
+                self.y - 20 <= mouse_pos[1] <= self.y + self.s + 20:
             self.num = (self.num + 1) % 10
             return True
 
@@ -201,9 +208,10 @@ class Keys(pygame.sprite.Sprite):
         (conn.cursor().execute("""SELECT pos1_x FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0]) / t_s,
         (conn.cursor().execute("""SELECT pos1_y FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0]) / t_s)
 
-
+# класс объектов
 class Objects(pygame.sprite.Sprite):
 
+    # метода создания объекта
     def __init__(self, name, active):
         super().__init__(all_obj)
         self.name = name
@@ -215,26 +223,37 @@ class Objects(pygame.sprite.Sprite):
         self.rect.x, self.rect.y = ((conn.cursor().execute("""SELECT pos1_x FROM obj WHERE name = ?""", (name,)).fetchall()[0][0])/t_s,
                                     (conn.cursor().execute("""SELECT pos1_y FROM obj WHERE name = ?""", (name,)).fetchall()[0][0])/t_s)
 
-
-
-
+    # метод реакции объекта на нажатие
     def get_click(self, mouse_pos, inv):
         print(self.name)
+        if self.name == "одежда":
+                    Keys("монета")
         if self.name == "шкаф" and inv.get_active_obj() == "ключ1":
             conn.cursor().execute("""UPDATE obj SET key = ? WHERE name = ?""", (1, self.name,))
-        if (conn.cursor().execute("""SELECT key FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0] == 1):
+        if self.name == "шкатулка_подоконник" and inv.get_active_obj() == "монета":
+            conn.cursor().execute("""UPDATE obj SET key = ? WHERE name = ?""", (1, self.name,))
+        if self.name == "шкафприхожая" and inv.get_active_obj() == "ключ2":
+            conn.cursor().execute("""UPDATE obj SET key = ? WHERE name = ?""", (1, self.name,))
+        if (conn.cursor().execute("""SELECT key FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0] != 0):
             self.active = (self.active + 1) % 2
 
+    # метод получения имени объекта
     def get_name(self):
         return self.name
 
+    # метод отрисовки объекта
     def update(self, dt):
-        if self.active == 0:
-
-            if self.name == "шкафприхожая":
-                for obj in all_obj:
-                    if obj.get_name() == "ключ1":
-                        obj.delete()
+        if (conn.cursor().execute("""SELECT key FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0] == 2) and self.active == 1:
+            self.image = pygame.transform.scale(load_image("записки.png"), (
+                (conn.cursor().execute("""SELECT x1 FROM obj WHERE name = ?""", ("записки",)).fetchall()[0][0]) / t_s,
+                (conn.cursor().execute("""SELECT y1 FROM obj WHERE name = ?""", ("записки",)).fetchall()[0][0]) / t_s))
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = (
+                (conn.cursor().execute("""SELECT pos1_x FROM obj WHERE name = ?""", ("записки",)).fetchall()[0][
+                    0]) / t_s,
+                (conn.cursor().execute("""SELECT pos1_y FROM obj WHERE name = ?""", ("записки",)).fetchall()[0][
+                    0]) / t_s)
+        elif self.active == 0:
 
             self.image = pygame.transform.scale(load_image(self.name + ".png"), (
             (conn.cursor().execute("""SELECT x1 FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][0]) / t_s,
@@ -251,8 +270,14 @@ class Objects(pygame.sprite.Sprite):
                         code.update()
                 else:
                     for i in range(4):
-                        codes.append(Code(340 + (i * 88), 260))
-
+                        codes.append(Code(340 + (i * 88), 260, 50))
+            if self.name == "коробкачасы":
+                if codes:
+                    for code in codes:
+                        code.update()
+                else:
+                    for i in range(4):
+                        codes.append(Code(275 + (i * 125), 200, 100))
             if self.name == "шкафприхожая":
                 k = True
                 for key in all_keys:
@@ -271,6 +296,7 @@ class Objects(pygame.sprite.Sprite):
                 (conn.cursor().execute("""SELECT pos2_y FROM obj WHERE name = ?""", (self.name,)).fetchall()[0][
                     0]) / t_s)
 
+    # метод удаления объекта
     def delete(self):
         self.kill()
 
@@ -282,17 +308,22 @@ def apartment(state, time):
         im = 'гостиная.png'
     elif state == 2:
         im = 'дверьтуалет.png'
+    elif state == 3:
+        im = 'кабинет.png'
     if state == 0 and time == 0:
+        Objects("одежда", 0)
         Objects("шкафприхожая", 0)
     elif state == 1 and time == 0:
         Objects("шкаф", 0)
         Objects("шкатулка_подоконник", 0)
-        Objects("шкатулка_шкаф", 0)
+        #Objects("шкатулка_шкаф", 0)
     elif state == 2 and time == 0:
         Objects("дверь", 0)
+    elif state == 3 and time == 0:
+        Objects("коробкачасы", 0)
+        Keys("ключ2")
     fon = pygame.transform.scale(load_image(im), (DIS_SIZE[0] - 100, DIS_SIZE[1]))
     screen.blit(fon, (0, 0))
-
 
 
 run_game = True
@@ -337,27 +368,43 @@ while run_game:
             flag += 1
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
+                codes = []
                 for o in all_obj:
                     o.kill()
+                for o in all_keys:
+                    o.kill()
                 t_room = 0
-                state_room = (state_room + 1) % 3
+                state_room = (state_room + 1) % 4
             if event.key == pygame.K_RIGHT:
+                codes = []
                 for o in all_obj:
+                    o.kill()
+                for o in all_keys:
                     o.kill()
                 t_room = 0
                 state_room = state_room - 1
                 if state_room < 0:
-                    state_room = 2
-    if codes:
+                    state_room = 3
+    if codes and state_room == 2:
         for i in range(4):
             main_door = True
             if codes[i].get_num() != [8 , 9, 5, 5][i]:
                 main_door = False
                 break
+    clock_box = False
+    if codes and state_room == 3:
+        for i in range(4):
+            clock_box = True
+            if codes[i].get_num() != [1 , 1, 2, 5][i]:
+                clock_box = False
+                break
+    if clock_box:
+        codes = []
+        conn.cursor().execute("""UPDATE obj SET key = ? WHERE name = ?""", (2, "коробкачасы",))
     if main_door:
-        print("good job")
         for o in all_obj:
             o.kill()
+        break
     dt = clock.tick()
     apartment(state_room, t_room)
     all_obj.draw(screen)
@@ -368,4 +415,6 @@ while run_game:
     pygame.display.flip()
     clock.tick(FPS)
     t_room += 1
+while main_door:
+   break
 pygame.quit()
